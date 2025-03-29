@@ -11,11 +11,18 @@ const sortingStrategies = {
 // 📦 Lấy danh sách sản phẩm theo bộ lọc & sắp xếp
 const getFilteredProducts = async (req, res) => {
   try {
-    const { category = [], sortBy = "price-lowtohigh" } = req.query;
+    const { category = [], sortBy = "price-lowtohigh", discount } = req.query;
 
     let filters = {};
+
+    // ✅ Lọc theo danh mục
     if (category.length) {
-      filters = { category: { $in: category.split(",") } };
+      filters.category = { $in: category.split(",") };
+    }
+
+    // ✅ Lọc sản phẩm khuyến mãi nếu có query ?discount=true
+    if (discount === "true") {
+      filters.salePrice = { $gt: 0 };
     }
 
     const sort = sortingStrategies[sortBy] || sortingStrategies["price-lowtohigh"];
@@ -27,6 +34,7 @@ const getFilteredProducts = async (req, res) => {
     res.status(500).json({ success: false, message: "Lỗi khi lấy sản phẩm" });
   }
 };
+
 
 // 🔍 Lấy thông tin chi tiết sản phẩm
 const getProductDetails = async (req, res) => {

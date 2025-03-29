@@ -27,3 +27,24 @@ exports.deleteSupportRequest = async (req, res) => {
     res.status(400).send({ error: 'Failed to delete support request' });
   }
 };
+
+exports.respondToSupportRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { response } = req.body;
+
+    const updatedRequest = await SupportRequest.findByIdAndUpdate(
+      id,
+      { response, respondedAt: new Date() },
+      { new: true }
+    );
+
+    if (!updatedRequest) {
+      return res.status(404).send({ error: 'Support request not found' });
+    }
+
+    res.status(200).send({ message: 'Response sent successfully', data: updatedRequest });
+  } catch (error) {
+    res.status(400).send({ error: 'Failed to send response' });
+  }
+};

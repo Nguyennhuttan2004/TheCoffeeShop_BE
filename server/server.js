@@ -12,6 +12,8 @@ const authRouter = require("./routes/auth/auth-route.js")
 const adminProductsRouter = require('./routes/admin/products-routes.js');
 const adminOrderRouter = require("./routes/admin/order-routes.js"); 
 const adminUserRouter = require("./routes/admin/user-routes.js"); 
+const adminBlogRouter = require("./routes/admin/blog-routes.js");
+const adminVoucherRouter = require("./routes/admin/voucher-route.js"); // ✅ Đang dùng path /api/admin/voucher
 
 const shopProductsRouter = require("./routes/shop/products-route.js");
 const shopCartRouter = require("./routes/shop/cart-routes.js");
@@ -23,7 +25,7 @@ const shopReviewRouter = require("./routes/shop/review-routes.js");
 const commonFeatureRouter = require("./routes/common/feature-routes.js");
 const momoPaymentRouter = require('./routes/common/momoPayment-routes.js');
 const supportRequestRouter = require('./routes/common/supportRequest-routes.js');
-
+const supportChatRouter = require('./routes/common/supportChat-route.js');
 
 mongoose
   .connect(process.env.MONGODB_URI, {
@@ -66,7 +68,8 @@ app.use("/api/auth", authRouter)
 app.use('/api/admin/products',adminProductsRouter)
 app.use("/api/admin/orders", adminOrderRouter);
 app.use("/api/admin/users", adminUserRouter);
-
+app.use("/api/admin/blog", adminBlogRouter); // ✅ Đang dùng path /api/admin/blog
+app.use("/api/admin/voucher", adminVoucherRouter); // ✅ Đang dùng path /api/admin/voucher
 
 app.use("/api/shop/products", shopProductsRouter);
 app.use("/api/shop/cart", shopCartRouter);
@@ -78,5 +81,6 @@ app.use("/api/shop/review", shopReviewRouter);
 app.use("/api/common/feature", commonFeatureRouter);
 app.use('/api/common/payment', momoPaymentRouter);
 app.use('/api', supportRequestRouter);
+app.use('/api', supportChatRouter);
 
 app.listen(PORT, () => console.log(`Server is now running on port ${PORT}`));

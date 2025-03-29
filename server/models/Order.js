@@ -28,6 +28,7 @@ const orderSchema = new mongoose.Schema({
     default: "pending",
   },
   totalAmount: { type: Number, required: true },
+  voucherCode: { type: String, default: null }, // ✅ Lưu mã giảm giá nếu có
   orderDate: { type: Date, default: Date.now },
 });
 

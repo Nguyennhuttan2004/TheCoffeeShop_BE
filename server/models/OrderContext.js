@@ -6,14 +6,10 @@ const RejectedState = require("../states/RejectedState");
 class OrderContext {
   constructor(order) {
     this.order = order;
-    
-    // Khởi tạo các trạng thái
     this.pendingState = new PendingState(this);
     this.inShippingState = new InShippingState(this);
     this.deliveredState = new DeliveredState(this);
     this.rejectedState = new RejectedState(this);
-
-    // Gán trạng thái ban đầu dựa trên dữ liệu order
     this.setStateFromDB(order.orderStatus);
   }
 
@@ -44,7 +40,7 @@ class OrderContext {
     try {
       this.currentState.setStatus(newStatus);
       this.order.orderStatus = newStatus;
-      return { success: true, message: "Order status updated successfully" };
+      return { success: true, message: "Order status updated successfully", updatedStatus: newStatus };
     } catch (error) {
       return { success: false, message: error.message };
     }

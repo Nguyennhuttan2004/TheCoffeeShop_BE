@@ -5,5 +5,6 @@ const supportRequestController = require('../../controllers/common/supportReques
 router.post('/support', supportRequestController.createSupportRequest);
 router.get('/support', supportRequestController.getSupportRequests);
 router.delete('/support/:id', supportRequestController.deleteSupportRequest);
+router.put('/support/respond/:id', supportRequestController.respondToSupportRequest);
 
 module.exports = router;

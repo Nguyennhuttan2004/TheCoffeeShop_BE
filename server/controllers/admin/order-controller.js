@@ -29,7 +29,9 @@ const getOrderDetailsForAdmin = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const order = await Order.findById(id);
+    const order = await Order.findById(id)
+      .populate("addressId")               // ✅ lấy chi tiết địa chỉ
+      .populate("cartItems.productId");    // (tuỳ chọn) lấy chi tiết sản phẩm nếu cần
 
     if (!order) {
       return res.status(404).json({
@@ -46,10 +48,11 @@ const getOrderDetailsForAdmin = async (req, res) => {
     console.log(e);
     res.status(500).json({
       success: false,
-      message: "Some error occured!",
+      message: "Some error occurred!",
     });
   }
 };
+
 
 const updateOrderStatus = async (req, res) => {
   try {
