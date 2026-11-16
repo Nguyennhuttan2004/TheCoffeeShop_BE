@@ -25,6 +25,27 @@ const createOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: "Thiếu thông tin đơn hàng!" });
     }
 
+    for (const item of cartItems) {
+      if (!Number.isInteger(item.quantity) || item.quantity < 1) {
+        return res.status(400).json({
+          success: false,
+          message: "Số lượng sản phẩm phải là số nguyên lớn hơn 0!",
+        });
+      }
+
+      const product = await Product.findOne({
+        _id: item.productId,
+        totalStock: { $gte: item.quantity },
+      });
+
+      if (!product) {
+        return res.status(400).json({
+          success: false,
+          message: `Sản phẩm "${item.title}" không đủ tồn kho!`,
+        });
+      }
+    }
+
     // Tính tổng
     const cart = new CartCalculator(cartItems);
     const rawTotal = cart.getTotal();
@@ -77,9 +98,34 @@ const createOrder = async (req, res) => {
     await newOrder.save();
 
     // Trừ tồn kho
+    const decrementedItems = [];
     for (const item of cartItems) {
-      await Product.findByIdAndUpdate(item.productId, {
-        $inc: { totalStock: -item.quantity },
+      const updatedProduct = await Product.findOneAndUpdate(
+        {
+          _id: item.productId,
+          totalStock: { $gte: item.quantity },
+        },
+        { $inc: { totalStock: -item.quantity } },
+        { new: true, runValidators: true }
+      );
+
+      if (!updatedProduct) {
+        for (const decrementedItem of decrementedItems) {
+          await Product.findByIdAndUpdate(decrementedItem.productId, {
+            $inc: { totalStock: decrementedItem.quantity },
+          });
+        }
+
+        await Order.findByIdAndDelete(newOrder._id);
+        return res.status(400).json({
+          success: false,
+          message: `Sản phẩm "${item.title}" không đủ tồn kho!`,
+        });
+      }
+
+      decrementedItems.push({
+        productId: item.productId,
+        quantity: item.quantity,
       });
     }
 
@@ -217,13 +263,6 @@ const capturePayment = async (req, res) => {
           return res
             .status(404)
             .json({ success: false, message: "Không tìm thấy đơn hàng!" });
-        }
-
-        // ✅ Giảm tồn kho của từng sản phẩm
-        for (const item of updatedOrder.cartItems) {
-          await Product.findByIdAndUpdate(item.productId, {
-            $inc: { totalStock: -item.quantity },
-          });
         }
 
         // ✅ Xoá giỏ hàng sau thanh toán

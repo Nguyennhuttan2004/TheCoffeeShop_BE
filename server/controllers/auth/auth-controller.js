@@ -1,38 +1,46 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const mongoose = require("mongoose"); 
+const mongoose = require("mongoose");
 const User = require("../../models/User");
 
-// register
+const getAvatarUrl = (avatar) => {
+  if (!avatar) return null;
+  return avatar.startsWith("/") ? avatar : `/images/${avatar}`;
+};
+
+const authCookieOptions = {
+  httpOnly: true,
+  secure: process.env.COOKIE_SECURE === "true" || process.env.NODE_ENV === "production",
+  sameSite:
+    process.env.COOKIE_SAME_SITE ||
+    (process.env.NODE_ENV === "production" ? "none" : "lax"),
+  path: "/",
+  maxAge: 60 * 60 * 1000,
+};
+
 const registerUser = async (req, res) => {
   const { userName, email, password } = req.body;
 
-  // Kiểm tra xem tất cả các trường có được cung cấp không
   if (!userName || !email || !password) {
-    return res.status(400).json({ message: 'All fields are required' });
+    return res.status(400).json({ message: "All fields are required" });
   }
 
   try {
-    // Kiểm tra xem email đã tồn tại chưa
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "Email đã tồn tại" });
     }
 
-    // Mã hóa mật khẩu
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Tạo người dùng mới
     const newUser = new User({
-      id: new mongoose.Types.ObjectId().toString(), // Tạo ID mới
+      id: new mongoose.Types.ObjectId().toString(),
       userName,
       email,
       password: hashedPassword,
-      role: 'user', // Giá trị mặc định
-      avatar: null  // Giá trị mặc định
+      role: "user",
+      avatar: null,
     });
 
-    // Lưu người dùng vào cơ sở dữ liệu
     await newUser.save();
     res.status(201).json({ message: "Đăng ký thành công" });
   } catch (error) {
@@ -41,27 +49,25 @@ const registerUser = async (req, res) => {
   }
 };
 
-//login
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
+
   try {
     const checkUser = await User.findOne({ email });
-    console.log({checkUser})
-    if (!checkUser)
+    if (!checkUser) {
       return res.json({
         success: false,
         message: "Người dùng không tồn tại! Vui lòng đăng ký trước",
       });
+    }
 
-    const checkPasswordMatch = await bcrypt.compare(
-      password,
-      checkUser.password
-    );
-    if (!checkPasswordMatch)
+    const checkPasswordMatch = await bcrypt.compare(password, checkUser.password);
+    if (!checkPasswordMatch) {
       return res.json({
         success: false,
         message: "Sai password, vui long thu lai",
       });
+    }
 
     const token = jwt.sign(
       {
@@ -69,29 +75,23 @@ const loginUser = async (req, res) => {
         role: checkUser.role,
         email: checkUser.email,
         userName: checkUser.userName,
-        avatar: checkUser?.avatar,
+        avatar: getAvatarUrl(checkUser.avatar),
       },
       "CLIENT_SECRET_KEY",
       { expiresIn: "60m" }
     );
 
-    res
-      .cookie("token", token, {
-        httpOnly: true, // Ngăn chặn truy cập từ JavaScript
-        secure: false, // Đặt true nếu bạn sử dụng HTTPS
-        sameSite: "Strict", // Ngăn chặn cookie được gửi trong các yêu cầu cross-site
-      })
-      .json({
-        success: true,
-        message: "Đăng nhập thành công",
-        user: {
-          email: checkUser.email,
-          role: checkUser.role,
-          id: checkUser._id,
-          userName: checkUser.userName,
-          avatar: checkUser?.avatar,
-        },
-      });
+    res.cookie("token", token, authCookieOptions).json({
+      success: true,
+      message: "Đăng nhập thành công",
+      user: {
+        email: checkUser.email,
+        role: checkUser.role,
+        id: checkUser._id,
+        userName: checkUser.userName,
+        avatar: getAvatarUrl(checkUser.avatar),
+      },
+    });
   } catch (error) {
     console.log(error);
     res.status(500).json({
@@ -101,34 +101,40 @@ const loginUser = async (req, res) => {
   }
 };
 
-//logout
 const logoutUser = (req, res) => {
-  res.clearCookie("token").json({
+  res.clearCookie("token", authCookieOptions).json({
     success: true,
     message: "Đăng xuất thành công!",
   });
 };
 
-// auth middleware
 const authMiddleware = async (req, res, next) => {
-  const token = req.cookies.token;
-  if (!token)
+  const token = req.cookies?.token;
+  if (!token) {
     return res.status(401).json({
       success: false,
       message: "Người dùng không hợp lệ!",
     });
+  }
 
   try {
     const decoded = jwt.verify(token, "CLIENT_SECRET_KEY");
+    const user = await User.findById(decoded.id).select("-password");
 
-    // db
-    // console.log({123: decoded})
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Tài khoản không tồn tại!",
+      });
+    }
 
-    // req.user = await User.findOne({_id:  decoded._id});
-
-    // console.log({456: req.user})
-    req.user = decoded
-    
+    req.user = {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+      userName: user.userName,
+      avatar: getAvatarUrl(user.avatar),
+    };
 
     next();
   } catch (error) {
@@ -138,17 +144,24 @@ const authMiddleware = async (req, res, next) => {
     });
   }
 };
-//getTotalUsers
+
 const getTotalUsers = async (req, res) => {
   try {
-    const users = await User.find({}); // Fetch all users
-    const totalUsers = users.length; // Total number of users
-    const admins = users.filter(user => user.role === 'admin').length; // Count admins
-    const regularUsers = users.filter(user => user.role === 'user').length; // Count regular users
+    const users = await User.find({});
+    const totalUsers = users.length;
+    const admins = users.filter((user) => user.role === "admin").length;
+    const regularUsers = users.filter((user) => user.role === "user").length;
 
     res.status(200).json({ totalUsers, admins, regularUsers });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
-module.exports = { registerUser, loginUser, logoutUser, authMiddleware,getTotalUsers };
+
+module.exports = {
+  registerUser,
+  loginUser,
+  logoutUser,
+  authMiddleware,
+  getTotalUsers,
+};

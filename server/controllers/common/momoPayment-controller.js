@@ -7,7 +7,6 @@
 const crypto = require('crypto');
 const https = require('https');
 const Order = require('../../models/Order');
-const Product = require('../../models/Product');
 const Cart = require('../../models/Cart'); // Ensure Cart is imported
 
 const partnerCode = 'MOMO'; // Partner Code của bạn
@@ -109,15 +108,6 @@ const handleMomoCallback = async (req, res) => {
     order.orderStatus = "confirmed";
     order.paymentId = paymentId;
     order.payerId = payerId;
-
-    // Cập nhật số lượng tồn kho và xóa sản phẩm
-    for (let item of order.cartItems) {
-        let product = await Product.findById(item.productId);
-        if (product) {
-            product.totalStock -= item.quantity; // Giảm số lượng tồn kho
-            await product.save(); // Lưu thay đổi
-        }
-    }
 
     // Xóa giỏ hàng sau khi thanh toán thành công
     await Cart.findByIdAndDelete(order.cartId); // Xóa giỏ hàng

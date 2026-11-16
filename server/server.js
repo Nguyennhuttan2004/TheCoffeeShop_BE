@@ -27,6 +27,13 @@ const momoPaymentRouter = require('./routes/common/momoPayment-routes.js');
 const supportRequestRouter = require('./routes/common/supportRequest-routes.js');
 const supportChatRouter = require('./routes/common/supportChat-route.js');
 
+const allowedOrigins = new Set(
+  (process.env.CLIENT_ORIGINS || "http://localhost:5173,http://127.0.0.1:5173")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+);
+
 mongoose
   .connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
@@ -41,7 +48,13 @@ const PORT = process.env.PORT || 5000;
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.has(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`CORS origin is not allowed: ${origin}`));
+    },
     methods: ["GET", "POST", "DELETE", "PUT"],
     allowedHeaders: [
       "Content-Type",
@@ -58,6 +71,7 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use("/images", express.static(path.join(__dirname, "images")));
 app.use(express.static("."))
 
 
