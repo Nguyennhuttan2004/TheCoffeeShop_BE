@@ -35,10 +35,7 @@ const allowedOrigins = new Set(
 );
 
 mongoose
-  .connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-  })
+  .connect(process.env.MONGODB_URI)
   
   .then(() => console.log("MongoDB connected"))
   .catch((error) => console.log(error));

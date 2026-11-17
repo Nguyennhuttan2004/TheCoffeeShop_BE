@@ -5,7 +5,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "audit:products": "node scripts/audit-products.js"
   },
   "author": "\"quanlycafe \"",
   "license": "ISC",
