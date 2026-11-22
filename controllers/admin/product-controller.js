@@ -1,5 +1,10 @@
 const { imageUploadUtil } = require("../../helpers/cloudinary.js");
 const Product = require("../../models/Product");
+const Cart = require("../../models/Cart.js");
+const ProductReview = require("../../models/Review.js");
+const { PRODUCT_CATEGORIES } = require("../../constants/product.js");
+
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // 🖼️ Upload hình ảnh lên Cloudinary
 const handleImageUpload = async (req, res) => {
@@ -18,7 +23,23 @@ const handleImageUpload = async (req, res) => {
 // ➕ Thêm sản phẩm mới
 const addProduct = async (req, res) => {
   try {
-    const { image, title, description, category, size, price, salePrice, totalStock } = req.body;
+    const { image, title, description, category, isBestSeller, size, price, salePrice, totalStock } = req.body;
+
+    const normalizedTitle = String(title || "").trim();
+    if (!normalizedTitle) {
+      return res.status(400).json({ success: false, message: "Tên sản phẩm không được để trống" });
+    }
+
+    if (!PRODUCT_CATEGORIES.includes(category)) {
+      return res.status(400).json({ success: false, message: "Danh mục sản phẩm không hợp lệ" });
+    }
+
+    const duplicate = await Product.findOne({
+      title: { $regex: `^${escapeRegex(normalizedTitle)}$`, $options: "i" },
+    });
+    if (duplicate) {
+      return res.status(409).json({ success: false, message: "Tên sản phẩm đã tồn tại" });
+    }
 
     // Đảm bảo `salePrice` không vượt quá `price`
     if (salePrice > price) {
@@ -27,9 +48,10 @@ const addProduct = async (req, res) => {
 
     const newProduct = new Product({
       image,
-      title,
+      title: normalizedTitle,
       description,
       category,
+      isBestSeller: Boolean(isBestSeller),
       size,
       price,
       salePrice,
@@ -59,7 +81,24 @@ const fetchAllProducts = async (req, res) => {
 const editProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const { image, title, description, category, size, price, salePrice, totalStock } = req.body;
+    const { image, title, description, category, isBestSeller, size, price, salePrice, totalStock } = req.body;
+
+    const normalizedTitle = String(title || "").trim();
+    if (!normalizedTitle) {
+      return res.status(400).json({ success: false, message: "Tên sản phẩm không được để trống" });
+    }
+
+    if (!PRODUCT_CATEGORIES.includes(category)) {
+      return res.status(400).json({ success: false, message: "Danh mục sản phẩm không hợp lệ" });
+    }
+
+    const duplicate = await Product.findOne({
+      _id: { $ne: id },
+      title: { $regex: `^${escapeRegex(normalizedTitle)}$`, $options: "i" },
+    });
+    if (duplicate) {
+      return res.status(409).json({ success: false, message: "Tên sản phẩm đã tồn tại" });
+    }
 
     // Đảm bảo `salePrice` không vượt quá `price`
     if (salePrice > price) {
@@ -68,7 +107,17 @@ const editProduct = async (req, res) => {
 
     const updatedProduct = await Product.findByIdAndUpdate(
       id,
-      { image, title, description, category, size, price, salePrice, totalStock },
+      {
+        image,
+        title: normalizedTitle,
+        description,
+        category,
+        isBestSeller: Boolean(isBestSeller),
+        size,
+        price,
+        salePrice,
+        totalStock,
+      },
       { new: true, runValidators: true }
     );
 
@@ -92,6 +141,11 @@ const deleteProduct = async (req, res) => {
     if (!deletedProduct) {
       return res.status(404).json({ success: false, message: "Sản phẩm không tồn tại" });
     }
+
+    await Promise.all([
+      Cart.updateMany({}, { $pull: { items: { productId: deletedProduct._id } } }),
+      ProductReview.deleteMany({ productId: deletedProduct._id }),
+    ]);
 
     res.status(200).json({ success: true, message: "Sản phẩm đã bị xóa" });
   } catch (error) {

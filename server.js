@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
@@ -26,6 +26,9 @@ const commonFeatureRouter = require("./routes/common/feature-routes.js");
 const momoPaymentRouter = require('./routes/common/momoPayment-routes.js');
 const supportRequestRouter = require('./routes/common/supportRequest-routes.js');
 const supportChatRouter = require('./routes/common/supportChat-route.js');
+const aiChatRouter = require("./routes/common/ai-chat-route.js");
+const chatbotRouter = require("./routes/chatbot/chatbot-routes.js");
+const adminChatbotRouter = require("./routes/admin/chatbot-routes.js");
 
 const allowedOrigins = new Set(
   (process.env.CLIENT_ORIGINS || "http://localhost:5173,http://127.0.0.1:5173")
@@ -35,10 +38,7 @@ const allowedOrigins = new Set(
 );
 
 mongoose
-  .connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-  })
+  .connect(process.env.MONGODB_URI)
   
   .then(() => console.log("MongoDB connected"))
   .catch((error) => console.log(error));
@@ -55,13 +55,14 @@ app.use(
 
       return callback(new Error(`CORS origin is not allowed: ${origin}`));
     },
-    methods: ["GET", "POST", "DELETE", "PUT"],
+    methods: ["GET", "POST", "DELETE", "PUT", "PATCH"],
     allowedHeaders: [
       "Content-Type",
       "Authorization",
       "Cache-Control",
       "Expires",
       "Pragma",
+      "X-Session-Id",
     ],
     credentials: true,
   })
@@ -95,6 +96,17 @@ app.use("/api/shop/review", shopReviewRouter);
 app.use("/api/common/feature", commonFeatureRouter);
 app.use('/api/common/payment', momoPaymentRouter);
 app.use('/api', supportRequestRouter);
-app.use('/api', supportChatRouter);
+app.use('/api/chat', supportChatRouter);
+app.use("/api/ai", aiChatRouter);
+app.use("/api/chatbot", chatbotRouter);
+app.use("/api/admin/chatbot", adminChatbotRouter);
+
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    service: "TheCoffeeShop backend",
+  });
+});
 
 app.listen(PORT, () => console.log(`Server is now running on port ${PORT}`));
+

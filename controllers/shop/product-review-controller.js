@@ -1,16 +1,38 @@
 const Order = require("../../models/Order");
 const Product = require("../../models/Product");
 const ProductReview = require("../../models/Review");
+const mongoose = require("mongoose");
 
 const addProductReview = async (req, res) => {
   try {
-    const { productId, userId, userName, reviewMessage, reviewValue } =
-      req.body;
+    const { productId, userName, reviewMessage, reviewValue } = req.body;
+    const userId = req.user?.id || req.body.userId;
+
+    if (
+      !mongoose.isValidObjectId(productId) ||
+      !mongoose.isValidObjectId(userId)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product or user.",
+      });
+    }
+
+    if (
+      !Number.isInteger(Number(reviewValue)) ||
+      Number(reviewValue) < 1 ||
+      Number(reviewValue) > 5
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Review value must be between 1 and 5.",
+      });
+    }
 
     const order = await Order.findOne({
       userId,
       "cartItems.productId": productId,
-      // orderStatus: "confirmed" || "delivered",
+      orderStatus: { $in: ["confirmed", "delivered"] },
     });
 
     if (!order) {
@@ -37,7 +59,7 @@ const addProductReview = async (req, res) => {
       userId,
       userName,
       reviewMessage,
-      reviewValue,
+      reviewValue: Number(reviewValue),
     });
 
     await newReview.save();
