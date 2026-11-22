@@ -22,7 +22,15 @@ router.get("/check-auth", authMiddleware, (req, res) => {
     user,
   });
 });
-router.get('/total-users', getTotalUsers);
+router.get('/total-users', authMiddleware, (req, res, next) => {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({
+      success: false,
+      message: "Bạn không có quyền thực hiện thao tác này.",
+    });
+  }
+  next();
+}, getTotalUsers);
 
 
 
