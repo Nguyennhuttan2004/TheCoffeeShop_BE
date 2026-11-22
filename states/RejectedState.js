@@ -5,7 +5,5 @@ class RejectedState extends OrderState {
     throw new Error("Rejected orders cannot change state");
   }
 }
-
 module.exports = RejectedState;
-
 

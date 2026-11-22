@@ -1,18 +1,28 @@
 const mongoose = require("mongoose");
-const { PRODUCT_CATEGORIES } = require("../constants/product.js");
 
 const ProductSchema = new mongoose.Schema(
   {
     image: { type: String, required: true },
-    title: { type: String, required: true, trim: true },
+    title: { type: String, required: true },
     description: { type: String },
-    category: { type: String, required: true, enum: PRODUCT_CATEGORIES },
-    isBestSeller: { type: Boolean, default: false },
+    category: { type: String, required: true },
     size: { type: String, default: "M" },
     price: { type: Number, required: true, min: 0 },
     salePrice: { type: Number, default: 0, min: 0 },
     totalStock: { type: Number, required: true, min: 0 },
     averageReview: { type: Number, default: 0, min: 0, max: 5 },
+    totalReviews: { type: Number, default: 0, min: 0 },
+    ratingBreakdown: {
+      type: Map,
+      of: Number,
+      default: () => new Map([
+        ["1", 0],
+        ["2", 0],
+        ["3", 0],
+        ["4", 0],
+        ["5", 0],
+      ]),
+    },
     stockStatus: { type: String, enum: ["inStock", "outOfStock"], default: "inStock" },
   },
   { timestamps: true }

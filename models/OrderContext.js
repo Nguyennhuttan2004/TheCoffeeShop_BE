@@ -20,7 +20,6 @@ class OrderContext {
   setStateFromDB(status) {
     switch (status) {
       case "pending":
-      case "confirmed":
         this.setState(this.pendingState);
         break;
       case "inShipping":
