@@ -22,6 +22,7 @@ class BaseDecorator {
     return this.cart.getTotal();
   }
 }
+//Lớp này ủy quyền lại cho cart gốc để giữ nguyên hành vi mặc định.
 
 class PercentVoucherDecorator extends BaseDecorator {
   constructor(cart, percentage, maxDiscount) {
