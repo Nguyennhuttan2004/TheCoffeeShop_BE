@@ -3,6 +3,16 @@ const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose"); 
 const User = require("../../models/User");
 
+const isProduction = process.env.NODE_ENV === "production";
+const authCookieOptions = {
+  httpOnly: true,
+  secure: process.env.COOKIE_SECURE
+    ? process.env.COOKIE_SECURE === "true"
+    : isProduction,
+  sameSite: process.env.COOKIE_SAME_SITE || (isProduction ? "none" : "lax"),
+  path: "/",
+};
+
 // register
 const registerUser = async (req, res) => {
   const { userName, email, password } = req.body;
@@ -82,11 +92,7 @@ const loginUser = async (req, res) => {
     );
 
     res
-      .cookie("token", token, {
-        httpOnly: true, // Ngăn chặn truy cập từ JavaScript
-        secure: false, // Đặt true nếu bạn sử dụng HTTPS
-        sameSite: "Strict", // Ngăn chặn cookie được gửi trong các yêu cầu cross-site
-      })
+      .cookie("token", token, authCookieOptions)
       .json({
         success: true,
         message: "Đăng nhập thành công",
@@ -109,7 +115,7 @@ const loginUser = async (req, res) => {
 
 //logout
 const logoutUser = (req, res) => {
-  res.clearCookie("token").json({
+  res.clearCookie("token", authCookieOptions).json({
     success: true,
     message: "Đăng xuất thành công!",
   });

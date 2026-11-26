@@ -30,12 +30,14 @@ const aiChatRouter = require("./routes/common/ai-chat-route.js");
 const chatbotRouter = require("./routes/chatbot/chatbot-routes.js");
 const adminChatbotRouter = require("./routes/admin/chatbot-routes.js");
 
-const allowedOrigins = new Set(
-  (process.env.CLIENT_ORIGINS || "http://localhost:5173,http://127.0.0.1:5173")
+const allowedOrigins = new Set([
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+  ...(process.env.CLIENT_ORIGINS || "")
     .split(",")
-    .map((origin) => origin.trim())
-    .filter(Boolean)
-);
+    .map((origin) => origin.trim().replace(/\/$/, ""))
+    .filter(Boolean),
+]);
 
 mongoose
   .connect(process.env.MONGODB_URI)
@@ -45,28 +47,34 @@ mongoose
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.has(origin)) {
+      return callback(null, true);
+    }
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.has(origin)) {
-        return callback(null, true);
-      }
+    return callback(null, false);
+  },
+  methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "Cache-Control",
+    "Expires",
+    "Pragma",
+    "X-Session-Id",
+  ],
+  credentials: true,
+  optionsSuccessStatus: 204,
+};
 
-      return callback(new Error(`CORS origin is not allowed: ${origin}`));
-    },
-    methods: ["GET", "POST", "DELETE", "PUT", "PATCH"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "Cache-Control",
-      "Expires",
-      "Pragma",
-      "X-Session-Id",
-    ],
-    credentials: true,
-  })
-);
+// Render terminates TLS before the Express process.
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
+
+// Register CORS before parsers and routes so API and preflight responses get headers.
+app.use(cors(corsOptions));
 
 app.use(cookieParser());
 app.use(express.json());
